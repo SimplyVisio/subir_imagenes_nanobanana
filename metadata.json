@@ -1,0 +1,5 @@
+{
+  "name": "Kie Asset Uploader",
+  "description": "Gestor de activos visuales optimizado para integración con APIs de video AI. Permite carga, previsualización y generación de enlaces para uso en flujos de n8n y Sora.",
+  "requestFramePermissions": []
+}
