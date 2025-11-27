@@ -1,6 +1,6 @@
 import React from 'react';
 import { UploadedAsset } from '../types';
-import { Copy, ExternalLink, Image as ImageIcon, Check } from 'lucide-react';
+import { Copy, ExternalLink, Image as ImageIcon, Check, FileJson, FileCode } from 'lucide-react';
 import { formatBytes, formatDate } from '../utils/format';
 
 interface AssetListProps {
@@ -24,10 +24,29 @@ export const AssetList: React.FC<AssetListProps> = ({ assets }) => {
           <ImageIcon className="w-8 h-8 text-slate-600" />
         </div>
         <h3 className="text-slate-400 font-medium">No hay activos cargados</h3>
-        <p className="text-slate-600 text-sm mt-1">Sube una imagen para comenzar</p>
+        <p className="text-slate-600 text-sm mt-1">Sube una imagen o JSON para comenzar</p>
       </div>
     );
   }
+
+  const renderPreview = (asset: UploadedAsset) => {
+    if (asset.type === 'application/json') {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 group-hover:bg-slate-800 transition-colors">
+          <FileJson className="w-12 h-12 text-slate-600 group-hover:text-brand-400 transition-colors mb-2" />
+          <span className="text-[10px] text-slate-500 font-mono">JSON</span>
+        </div>
+      );
+    }
+    
+    return (
+      <img 
+        src={asset.url} 
+        alt={asset.name} 
+        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500"
+      />
+    );
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -38,13 +57,9 @@ export const AssetList: React.FC<AssetListProps> = ({ assets }) => {
         >
           {/* Image Preview Area */}
           <div className="aspect-video w-full bg-slate-950 relative overflow-hidden">
-            <img 
-              src={asset.url} 
-              alt={asset.name} 
-              className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500"
-            />
+            {renderPreview(asset)}
             <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md text-[10px] font-mono text-white border border-white/10">
-              {asset.type.split('/')[1].toUpperCase()}
+              {asset.type.includes('json') ? 'JSON' : asset.type.split('/')[1].toUpperCase()}
             </div>
           </div>
 

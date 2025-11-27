@@ -14,7 +14,7 @@ export async function POST(request: Request): Promise<Response> {
       onBeforeGenerateToken: async (pathname: string) => {
         // Aquí puedes agregar validación de usuario si implementas autenticación más adelante
         return {
-          allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp'],
+          allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'application/json'],
           tokenPayload: JSON.stringify({
             // Datos opcionales para guardar en los metadatos del blob
           }),

@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useRef } from 'react';
-import { UploadCloud, FileImage, X, Loader2 } from 'lucide-react';
+import { UploadCloud, FileImage, X, Loader2, FileJson } from 'lucide-react';
 import { ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from '../constants';
 import { formatBytes } from '../utils/format';
 
@@ -16,7 +16,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onFileSelect, isUploadin
   const validateFile = (file: File): boolean => {
     setError(null);
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-      setError(`Tipo de archivo no soportado. Use: JPEG, PNG, WEBP.`);
+      setError(`Tipo de archivo no soportado. Use: JPEG, PNG, WEBP o JSON.`);
       return false;
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -102,11 +102,11 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onFileSelect, isUploadin
         </div>
 
         <h3 className="text-lg font-semibold text-slate-200 mb-2">
-          {isUploading ? 'Subiendo activo...' : 'Arrastra tu imagen aquí'}
+          {isUploading ? 'Subiendo activo...' : 'Arrastra tus archivos aquí'}
         </h3>
         
         <p className="text-sm text-slate-400 max-w-xs mx-auto mb-4">
-          Soporta JPG, PNG y WEBP hasta 10MB.
+          Soporta Imágenes (JPG, PNG, WEBP) y JSON hasta 10MB.
           <br/>
           <span className="text-xs text-slate-500 mt-2 block">Optimizado para Kie AI Sora 2</span>
         </p>

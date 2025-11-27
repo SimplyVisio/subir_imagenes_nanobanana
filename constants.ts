@@ -4,7 +4,8 @@ export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 export const ALLOWED_MIME_TYPES = [
   'image/jpeg',
   'image/png',
-  'image/webp'
+  'image/webp',
+  'application/json'
 ];
 
 export const APP_NAME = "Kie Asset Manager";
