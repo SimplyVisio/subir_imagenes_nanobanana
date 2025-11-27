@@ -13,86 +13,87 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
-    // 2. Procesar el Form Data (multipart)
-    const formData = await request.formData();
-    let file = formData.get('file') as File;
+    const contentType = request.headers.get('content-type') || '';
+    let buffer: Buffer;
+    let filename = '';
+    let mimeType = 'image/png'; // Default
 
-    if (!file) {
-      return new Response(JSON.stringify({ error: 'No file provided in "file" field' }), { status: 400 });
-    }
-
-    // --- LOGICA DE CONVERSIÓN JSON A IMAGEN ---
-    // Si es un JSON, intentamos extraer la imagen base64 de adentro
-    if (file.type === 'application/json' || file.name.endsWith('.json')) {
-      try {
-        const textContent = await file.text();
-        const json = JSON.parse(textContent);
-        
-        // Buscamos campos comunes donde podría venir el base64
-        // Acepta: { "data": "...", "image": "...", "base64": "...", "content": "..." }
-        const base64String = json.data || json.image || json.base64 || json.content || json.file;
-
-        if (base64String && typeof base64String === 'string') {
-          // Limpiar cabecera data:image/png;base64, si existe
-          const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
-          
-          // Convertir a Buffer
-          const buffer = Buffer.from(base64Data, 'base64');
-          
-          // Determinar nombre y tipo
-          // Si el JSON trae nombre, úsalo, si no, cambia la extensión del archivo subido o genera uno
-          let fileName = json.name || json.fileName || file.name.replace('.json', '.png');
-          if (!fileName.match(/\.(jpg|jpeg|png|webp)$/i)) {
-            fileName += '.png'; // Default a png si no hay extensión
-          }
-
-          // Determinar mime type (simple, basado en extensión o default)
-          let contentType = json.type || json.mimeType;
-          if (!contentType) {
-             if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) contentType = 'image/jpeg';
-             else if (fileName.endsWith('.webp')) contentType = 'image/webp';
-             else contentType = 'image/png';
-          }
-
-          // Crear un nuevo objeto "File-like" para subir (Buffer funciona directo en put)
-          // Sobreescribimos la variable 'file' original con el buffer, pero put() acepta string | buffer | file
-          // Así que cambiamos la llamada a put abajo ligeramente.
-          
-          const blob = await put(fileName, buffer, {
-            access: 'public',
-            addRandomSuffix: true,
-            contentType: contentType
-          });
-
-          return new Response(JSON.stringify({
-            success: true,
-            converted: true, // Flag para saber que fue convertido
-            url: blob.url,
-            downloadUrl: blob.downloadUrl,
-            pathname: blob.pathname,
-            contentType: blob.contentType,
-            uploadedAt: new Date().toISOString()
-          }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          });
-        }
-      } catch (e) {
-        console.warn("Fallo al intentar parsear JSON como imagen, subiendo archivo original:", e);
-        // Si falla el parseo, sigue y sube el archivo JSON original tal cual
+    // CASO A: Solicitud JSON (Configuración actual de tu n8n)
+    if (contentType.includes('application/json')) {
+      const body = await request.json();
+      
+      // Buscar la data base64 en varios campos posibles
+      const base64String = body.data || body.image || body.base64 || body.content || body.file;
+      
+      if (!base64String) {
+        return new Response(JSON.stringify({ error: 'Body JSON must contain a "data" field with base64 string' }), { status: 400 });
       }
-    }
-    // -------------------------------------------
 
-    // 3. Subida normal (Imagen directa o JSON fallido)
-    const blob = await put(file.name, file, {
+      // Limpiar prefijo data URI si existe (ej: data:image/png;base64,...)
+      const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
+      buffer = Buffer.from(base64Data, 'base64');
+
+      // Determinar nombre del archivo
+      filename = body.name || body.filename || `upload-${Date.now()}.png`;
+      if (!filename.match(/\.(jpg|jpeg|png|webp)$/i)) {
+        filename += '.png';
+      }
+
+      // Intentar adivinar mime type por extensión
+      if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) mimeType = 'image/jpeg';
+      else if (filename.endsWith('.webp')) mimeType = 'image/webp';
+      else mimeType = 'image/png';
+    } 
+    // CASO B: Solicitud Multipart (Archivo binario estándar)
+    else if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      const file = formData.get('file') as File || formData.get('data') as File;
+
+      if (!file) {
+        return new Response(JSON.stringify({ error: 'No file found in form data' }), { status: 400 });
+      }
+
+      // Sub-caso: Si subes un archivo .json que contiene la imagen base64
+      if (file.type === 'application/json' || file.name.endsWith('.json')) {
+        const text = await file.text();
+        try {
+          const json = JSON.parse(text);
+          const base64String = json.data || json.image || json.base64;
+          if (base64String) {
+             const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
+             buffer = Buffer.from(base64Data, 'base64');
+             filename = json.name || file.name.replace('.json', '.png');
+             if (!filename.match(/\.(jpg|jpeg|png|webp)$/i)) filename += '.png';
+          } else {
+             // Es un JSON normal sin imagen, subir como tal
+             buffer = Buffer.from(text);
+             filename = file.name;
+             mimeType = 'application/json';
+          }
+        } catch (e) {
+          return new Response(JSON.stringify({ error: 'Invalid JSON file content' }), { status: 400 });
+        }
+      } else {
+        // Es una imagen normal
+        const arrayBuffer = await file.arrayBuffer();
+        buffer = Buffer.from(arrayBuffer);
+        filename = file.name;
+        mimeType = file.type;
+      }
+    } else {
+      return new Response(JSON.stringify({ error: `Unsupported Content-Type: ${contentType}. Use application/json or multipart/form-data` }), { status: 400 });
+    }
+
+    // 2. Subir a Vercel Blob
+    const blob = await put(filename, buffer, {
       access: 'public',
-      addRandomSuffix: true, 
+      addRandomSuffix: true,
+      contentType: mimeType
     });
 
     return new Response(JSON.stringify({
       success: true,
-      url: blob.url,           
+      url: blob.url,
       downloadUrl: blob.downloadUrl,
       pathname: blob.pathname,
       contentType: blob.contentType,
@@ -103,6 +104,7 @@ export async function POST(request: Request): Promise<Response> {
     });
 
   } catch (error) {
+    console.error(error);
     return new Response(JSON.stringify({ error: (error as Error).message }), {
       status: 500,
       headers: { 'content-type': 'application/json' },
