@@ -1,42 +1,51 @@
+import { upload } from '@vercel/blob/client';
 import { UploadedAsset } from "../types";
 
-// NOTE: In a real Vercel environment, you would use @vercel/blob
-// Example: import { put } from '@vercel/blob';
-
 export const uploadFile = async (file: File): Promise<UploadedAsset> => {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
+  // Implementación real usando Vercel Blob
+  // Esto requiere que la variable de entorno BLOB_READ_WRITE_TOKEN esté configurada en Vercel
+  // y que el archivo api/upload.ts exista para manejar la autorización.
 
-  // -------------------------------------------------------------------------
-  // IMPORTANT: MOCK IMPLEMENTATION FOR DEMO
-  // Since we cannot deploy a backend in this code generation, we use FileReader
-  // to create a local Data URL.
-  //
-  // FOR PRODUCTION WITH VERCEL:
-  // 1. Install @vercel/blob
-  // 2. Create an API route (e.g., /api/upload)
-  // 3. Use `put(file.name, file, { access: 'public' })`
-  // -------------------------------------------------------------------------
+  try {
+    const newBlob = await upload(file.name, file, {
+      access: 'public',
+      handleUploadUrl: '/api/upload', // Llama a nuestra función serverless
+    });
 
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = reader.result as string;
-      
-      const asset: UploadedAsset = {
-        id: crypto.randomUUID(),
-        name: file.name,
-        // In a real app, this would be `https://...public.blob.vercel-storage.com/...`
-        url: base64, 
-        type: file.type,
-        size: file.size,
-        createdAt: Date.now(),
-        status: 'completed'
-      };
-      
-      resolve(asset);
+    return {
+      id: crypto.randomUUID(),
+      name: file.name,
+      url: newBlob.url, // URL pública permanente
+      type: file.type,
+      size: file.size,
+      createdAt: Date.now(),
+      status: 'completed'
     };
-    reader.onerror = () => reject(new Error("Error reading file"));
-    reader.readAsDataURL(file);
-  });
+  } catch (error) {
+    console.error("Error subiendo a Vercel Blob:", error);
+    
+    // Fallback SOLO para desarrollo local si no hay conexión a API real
+    // En producción, esto debería fallar si no hay backend
+    if (process.env.NODE_ENV === 'development') {
+        console.warn("Usando modo fallback local (sin persistencia real)");
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              resolve({
+                id: crypto.randomUUID(),
+                name: file.name,
+                url: reader.result as string, 
+                type: file.type,
+                size: file.size,
+                createdAt: Date.now(),
+                status: 'completed'
+              });
+            };
+            reader.onerror = () => reject(new Error("Error reading file locally"));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    throw error;
+  }
 };
