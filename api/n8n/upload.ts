@@ -27,13 +27,14 @@ export async function POST(request: Request): Promise<Response> {
     });
 
     // 4. Retornar la URL y metadatos para n8n
+    // Nota: Eliminamos 'size' aquí porque el tipo PutBlobResult no siempre lo garantiza,
+    // pero la URL es lo que necesitas para Sora.
     return new Response(JSON.stringify({
       success: true,
       url: blob.url,           // ESTE ES TU IDENTIFICADOR ÚNICO Y URL PÚBLICA
       downloadUrl: blob.downloadUrl,
       pathname: blob.pathname,
       contentType: blob.contentType,
-      size: blob.size,
       uploadedAt: new Date().toISOString()
     }), {
       status: 200,
