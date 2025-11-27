@@ -1,7 +1,7 @@
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 
 export const config = {
-  runtime: 'edge',
+  runtime: 'nodejs',
 };
 
 export async function POST(request: Request): Promise<Response> {

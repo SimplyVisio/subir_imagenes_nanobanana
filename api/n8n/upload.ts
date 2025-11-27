@@ -1,7 +1,7 @@
 import { put } from '@vercel/blob';
 
 export const config = {
-  runtime: 'edge',
+  runtime: 'nodejs',
 };
 
 export async function POST(request: Request): Promise<Response> {

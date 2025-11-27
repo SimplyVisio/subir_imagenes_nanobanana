@@ -1,7 +1,7 @@
 import { head } from '@vercel/blob';
 
 export const config = {
-  runtime: 'edge',
+  runtime: 'nodejs',
 };
 
 export async function GET(request: Request): Promise<Response> {
