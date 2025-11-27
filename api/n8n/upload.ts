@@ -33,8 +33,10 @@ export async function POST(request: Request): Promise<Response> {
       const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
       buffer = Buffer.from(base64Data, 'base64');
 
-      // Determinar nombre del archivo
-      filename = body.name || body.filename || `upload-${Date.now()}.png`;
+      // Determinar nombre del archivo (Asegurando que sea STRING)
+      const rawName = body.name || body.filename || `upload-${Date.now()}.png`;
+      filename = String(rawName);
+
       if (!filename.match(/\.(jpg|jpeg|png|webp)$/i)) {
         filename += '.png';
       }
@@ -62,7 +64,11 @@ export async function POST(request: Request): Promise<Response> {
           if (base64String) {
              const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
              buffer = Buffer.from(base64Data, 'base64');
-             filename = json.name || file.name.replace('.json', '.png');
+             
+             // Asegurar que sea string
+             const rawJsonName = json.name || file.name.replace('.json', '.png');
+             filename = String(rawJsonName);
+
              if (!filename.match(/\.(jpg|jpeg|png|webp)$/i)) filename += '.png';
           } else {
              // Es un JSON normal sin imagen, subir como tal
